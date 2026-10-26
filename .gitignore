@@ -53,3 +53,14 @@ dkms.conf
 
 # debug information files
 *.dwo
+
+# Local ESP-IDF Installation Manager configuration
+eim_config.toml
+
+# ESP-IDF generated files
+/build/
+/sdkconfig
+/sdkconfig.old
+
+# Local VS Code and ESP-IDF editor configuration
+/.vscode/

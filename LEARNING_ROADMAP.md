@@ -11,7 +11,7 @@ This file is the persistent source of truth for learning progress and verified i
 | 3. Modular C Software Design | Separate types, configuration, and interfaces | Not started | None | Complete Phase 2 |
 | 4. Motion Control Fundamentals | Enforce limits and generate smooth targets | Not started | None | Complete Phase 3 |
 | 5. FreeRTOS Fundamentals and Integration | Separate input and motion using a queue | Not started | None | Complete Phase 4 |
-| 6. PS5 DualSense Integration | Translate wireless input into existing commands | Blocked pending hardware identification | No ESP32 variant identified | Verify exact chip supports Bluetooth Classic before dependency selection |
+| 6. PS5 DualSense Integration | Translate wireless input into existing commands | Not started; compatibility gate provisionally passed | User-provided schematic identifies ESP32-WROOM-32UE; official datasheet confirms BR/EDR | Physically corroborate module and external antenna before Bluetooth integration |
 | 7. System Integration and Verification | Validate and document the complete system | Not started | None | Complete Phases 1–6 |
 
 ## Project boundaries and evidence rules
@@ -28,11 +28,11 @@ This file is the persistent source of truth for learning progress and verified i
 ## Checkpoint ledger
 
 - **Current phase:** Phase 1 — ESP-IDF Fundamentals
-- **Current micro-goal:** Relaunch VS Code from the configured shell so ESP-IDF Installation Manager can detect the existing Homebrew Python.
+- **Current micro-goal:** Confirm VS Code reloads the generated ESP-IDF IntelliSense configuration and resolves `esp_log.h`.
 - **Current file:** Project-wide environment; no learner code edit yet.
 - **Known state:** The repository contained blank placeholder build/source files. The minimal Phase 1 scaffold now exists. `idf.py` and `xtensa-esp32-elf-gcc` were not found in the current shell or common local paths.
-- **Pending learner evidence:** The installer reports `Python Environment Ready` after relaunch and recheck; no ESP-IDF version installed yet.
-- **Hardware state:** Board variant, USB serial port, flash result, logs, and all physical motion are unverified.
+- **Pending learner evidence:** After reloading VS Code, the editor diagnostic for `esp_log.h` disappears; temporary `ESP_LOGE` exercise resumes afterward.
+- **Hardware state:** User-provided schematic identifies ESP32-WROOM-32UE; physical module marking, external antenna, USB serial port, flash result, logs, and all physical motion remain unverified.
 
 ---
 
@@ -91,11 +91,13 @@ reset/power-on
 - [x] Inspect existing repository files before editing. Evidence: all project source/build placeholders were one blank line on 2026-10-25.
 - [x] Check whether `idf.py`, the toolchain, `IDF_PATH`, or a common local ESP-IDF installation is visible. Evidence: none was found in the inspected shell on 2026-10-25.
 - [x] Install and verify Installation Manager prerequisites. Evidence: CMake 4.4.4 and `dfu-util` 0.11 were found under `/opt/homebrew/bin` on 2026-10-25.
-- [ ] Activate or install a supported ESP-IDF environment.
-- [ ] Record `idf.py --version` output.
-- [ ] Identify the exact development board and ESP32 chip marking/variant.
-- [ ] Record the target name reported by the board/package information; do not infer it from “ESP32” alone.
-- [ ] Identify the serial port without hard-coding another machine's port.
+- [x] Pass the EIM CLI Python sanity checks. Evidence: Python version, pip, venv, standard library, ctypes, and SSL/HTTPS all reported `[PASS]` on 2026-10-26.
+- [x] Install and independently activate a supported ESP-IDF environment. Evidence: EIM activation script loaded ESP-IDF v5.5.6 and its tools on 2026-10-26.
+- [x] Record `idf.py --version` output. Evidence: `ESP-IDF v5.5.6` in an activated verification shell; learner-terminal activation remains the current checkpoint.
+- [x] Identify the module variant from design evidence. Evidence: user-provided schematic labels M2 as `ESP32-WROOM-32UE` on 2026-10-26.
+- [ ] Corroborate that the physically installed module marking is ESP32-WROOM-32UE; flash-tool evidence has confirmed its internal ESP32-D0WD-V3 chip family but not the module/antenna suffix.
+- [x] Record the ESP-IDF target as `esp32`, verified against the module datasheet and flash-tool detection of ESP32-D0WD-V3 revision 3.1.
+- [x] Identify the serial port without guessing. Evidence: `/dev/cu.usbserial-110` appeared after the board was connected and its character-device node was verified on 2026-10-26.
 
 #### Minimum project
 
@@ -104,19 +106,20 @@ reset/power-on
 - [x] Create/verify a minimal `main/app_main.c` with informational and warning logs.
 - [x] Keep future-stage placeholder modules out of the current component build.
 - [ ] Explain each line of both CMake files without referring to notes.
-- [ ] Explain who calls `app_main()` and what happens if it returns.
+- [x] Explain who calls `app_main()` and what happens if it returns. Evidence: learner correctly identified that only the main task ends when `app_main()` returns; the ESP32 system and FreeRTOS scheduler continue.
 
 #### Configure, build, flash, and observe
 
-- [ ] Run `idf.py set-target <verified-target>` only after identifying the chip.
-- [ ] Run `idf.py build` successfully.
-- [ ] Record the selected target and ESP-IDF version used for the successful build.
-- [ ] Identify the generated bootloader, partition table, application binary, and ELF output in `build/`.
-- [ ] Connect the board and identify its serial port.
-- [ ] Flash with `idf.py -p <PORT> flash`.
-- [ ] Open the monitor with `idf.py -p <PORT> monitor`.
-- [ ] Observe the exact `arm_app` information and warning messages after reset.
-- [ ] Exit the monitor using its documented shortcut.
+- [x] Run `idf.py set-target esp32` after identifying the module from the schematic. Evidence: generated `sdkconfig` records `CONFIG_IDF_TARGET="esp32"` and Xtensa architecture on 2026-10-26.
+- [x] Save the verified non-default 4 MB flash choice into tracked `sdkconfig.defaults`. Evidence: minimal defaults file contains only `CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y` plus generated comments.
+- [x] Run `idf.py build` successfully. Evidence: 1027 build steps completed and `Project build complete` was reported on 2026-10-26.
+- [x] Record the selected target and ESP-IDF version used for the successful build. Evidence: target `esp32`, ESP-IDF v5.5.6.
+- [x] Identify the generated bootloader, partition table, application binary, and ELF output in `build/`. Evidence: application binary 162,256 bytes, Xtensa ELF 2,869,352 bytes, bootloader 26,000 bytes, partition table 3,072 bytes.
+- [x] Connect the board and identify its serial port. Evidence: learner reported `/dev/cu.usbserial-110`; it was absent from the pre-connection inventory and present afterward.
+- [x] Flash with `idf.py -p /dev/cu.usbserial-110 flash`. Evidence: bootloader, application, and partition table writes all passed hash verification on 2026-10-26.
+- [x] Open the monitor with `idf.py -p /dev/cu.usbserial-110 monitor`.
+- [x] Observe the exact `arm_app` information and warning messages after reset. Evidence: both expected messages appeared immediately after ESP-IDF called `app_main()` on 2026-10-26.
+- [x] Exit the monitor using its documented shortcut/menu sequence. Evidence: learner confirmed exit on 2026-10-26.
 - [ ] Add one truthful `ESP_LOGE` test message, observe it, then remove it so the normal application does not falsely report a failure.
 - [ ] Make one intentional source edit and confirm that the incremental build recompiles the relevant source.
 
@@ -813,6 +816,10 @@ Expected evidence:
 | 2026-10-25 | Use USB serial before Bluetooth | Establishes and verifies the command/motion boundary without radio/dependency complexity | Accepted; implementation pending |
 | 2026-10-25 | Do not choose ESP-IDF target or Bluepad32 dependency until the exact chip is verified | DualSense uses Bluetooth Classic through Bluepad32; not every ESP32 variant supports BR/EDR | Required gate |
 | 2026-10-25 | Compile only `app_main.c` during the first Phase 1 checkpoint | Existing future-stage files are blank placeholders and should not be implemented prematurely | Active |
+| 2026-10-26 | EIM installer target `all` may be selected, but project `IDF_TARGET` must remain unset until the physical chip is identified | EIM's choice controls which support tools are installed; `idf.py set-target` controls this project's actual build target | Accepted clarification |
+| 2026-10-26 | Use ESP-IDF target `esp32` for the ESP32-WROOM-32UE module identified in the user-provided schematic | Espressif documents this module as an original ESP32-family module with ESP32-D0WD-V3/D0WDR2-V3 SoC options and Bluetooth 4.2 BR/EDR + BLE | Provisionally accepted; physical marking and flash-tool detection still required |
+| 2026-10-26 | Install exact ESP-IDF tag `v5.5.6` rather than v6.x or a moving release branch | Current Bluepad32 raw ESP-IDF instructions require v5.5 or newer and its CI exercises v5.5; an exact patch tag improves reproducibility | Selected baseline; installation pending |
+| 2026-10-26 | Ignore the generated root-level `eim_config.toml` | It contains machine-specific absolute installation paths and EIM state; `sdkconfig.defaults` remains tracked as project configuration | Implemented and verified with `git check-ignore` |
 
 ## Problems encountered
 
@@ -823,13 +830,24 @@ Expected evidence:
 | 2026-10-25 | ESP-IDF Installation Manager v0.20.1 opened and reported missing `dfu-util` and `cmake` | Development prerequisites | Open: install both with Homebrew, verify their versions, then reopen/refresh the manager |
 | 2026-10-25 | CMake 4.4.4 and `dfu-util` 0.11 resolved from `/opt/homebrew/bin` after learner installation | Development prerequisites | Resolved and verified; refresh/reopen Installation Manager next |
 | 2026-10-25 | Installation Manager GUI reported Python setup required, while the shell resolved Homebrew Python 3.10.20 with pip 26.0.1, `venv`, and OpenSSL 3.6.1 | macOS GUI environment | Open: relaunch VS Code from the configured shell so the GUI inherits Homebrew `PATH`, then recheck |
+| 2026-10-26 | Initial relaunch command referred to nonexistent `Visual Studio Code.app/Contents/MacOS/Electron` | Setup instruction | Corrected executable path after inspection: `Visual Studio Code.app/Contents/MacOS/Code` |
+| 2026-10-26 | EIM Python recheck still failed after VS Code was launched from the configured shell | macOS GUI environment | Use Espressif's documented EIM CLI/Homebrew route so EIM directly inherits the working terminal environment |
+| 2026-10-26 | Homebrew refused to install the EIM formula until its third-party tap was explicitly trusted | Package-manager trust gate | Avoided changing trust settings: the installed `/Applications/eim.app` already contains a CLI-capable official EIM binary |
+| 2026-10-26 | EIM GUI still reported Python setup required when its binary was launched directly with Homebrew Python first in `PATH` | Known EIM macOS GUI issue | Stop retrying GUI mode; use the same binary's `wizard` command, the workaround documented in Espressif issue 1039 |
+| 2026-10-26 | EIM CLI wizard inherited Homebrew Python correctly and passed every sanity check | Development environment | Resolved by using terminal `wizard` mode; wizard stopped at target selection pending exact chip identification |
 | 2026-10-25 | Root/component CMake, `app_main.c`, and future modules were one blank line | Project scaffold | Minimum Phase 1 files created; future modules left untouched and excluded from build |
+| 2026-10-26 | Boot log reported physical flash size 4096 KB but image header size 2048 KB | Project configuration | Resolved: selected 4 MB in menuconfig, rebuilt/reflashed, and confirmed a clean 4 MB boot without the mismatch warning |
+| 2026-10-26 | Learner terminal reported `zsh: command not found: rg` during configuration verification | Optional local utility | Use macOS `grep` for the same narrow check; this is not an ESP-IDF or configuration failure |
+| 2026-10-26 | VS Code C/C++ diagnostic reported missing `esp_log.h` and include-path errors even though firmware compiled | Editor IntelliSense | Configuration generated: `.vscode/c_cpp_properties.json` points to `build/compile_commands.json`; `.vscode/` is ignored because it contains a machine-specific absolute path. Awaiting learner confirmation that a VS Code reload clears the diagnostic |
 
 ## Lessons learned
 
 - File presence is not evidence that a project has an implemented or buildable scaffold; contents and build registration must be inspected.
 - Tool availability in one shell is not evidence about board connection or the absence of all installations; capture the activated environment and version explicitly.
 - Target selection is a hardware fact, not a naming guess.
+- EIM installer tool-target selection and a project's ESP-IDF build target are different decisions; installing support for `all` does not make firmware universal or identify the connected chip.
+- ESP32-WROOM-32UE is the external-antenna variant; Bluetooth/Wi-Fi testing requires the correct external antenna to be present, and schematic identity still needs physical corroboration.
+- Detailed CMake study was paused at the learner's request after verifying the essential project-versus-component distinction; its checklist item remains incomplete.
 
 ## Verification log
 
@@ -842,6 +860,23 @@ Expected evidence:
 | 2026-10-25 | Installation Manager prerequisite check | Screenshot showed `Prerequisites Missing`: `dfu-util`, `cmake`; local check found Homebrew 5.1.3 but neither command | Installer reached; prerequisite gate identified | ESP-IDF version has not been selected or installed |
 | 2026-10-25 | Installation Manager prerequisites after install | `cmake --version` reported 4.4.4; `dfu-util --version` reported 0.11 | Passed | ESP-IDF framework/toolchain itself remains uninstalled |
 | 2026-10-25 | Python sanity diagnosis | `/opt/homebrew/opt/python@3.10/libexec/bin/python3`; Python 3.10.20; pip 26.0.1; imports of `ssl` and `venv` succeeded | Shell Python meets displayed EIM requirements | EIM GUI did not inherit the shell's Homebrew path |
+| 2026-10-26 | Embedded EIM CLI | `/Applications/eim.app/Contents/MacOS/eim --version` reported `eim 0.20.1`; help exposed `gui`, `wizard`, and installation commands | Passed | GUI Python recheck still pending using this direct launch route |
+| 2026-10-26 | EIM CLI prerequisites and Python sanity | Git, CMake, and `dfu-util` satisfied; Python version, pip, venv, standard library, ctypes, and SSL/HTTPS all reported `[PASS]` | Passed | No ESP target or ESP-IDF version selected; framework/toolchain not installed yet |
+| 2026-10-26 | Module identification from design evidence | User supplied schematic labels M2 `ESP32-WROOM-32UE`; Espressif datasheet identifies original ESP32 SoC family and Bluetooth 4.2 BR/EDR + BLE | Preliminary target `esp32` and DualSense radio compatibility confirmed | Physical module marking, antenna connection, and flash-tool chip detection remain unverified |
+| 2026-10-26 | EIM target/version selection | Learner advanced with installer target `esp32` and exact ESP-IDF tag `v5.5.6` | Selection verified | Download and installation have not occurred or been verified yet |
+| 2026-10-26 | ESP-IDF installation/tool activation | `activate_idf_v5.5.6.sh` loaded `IDF_PATH=/Users/elong/.espressif/v5.5.6/esp-idf`; `idf.py --version` returned `ESP-IDF v5.5.6`; Xtensa GCC 14.2.0 and Ninja 1.12.1 resolved | Passed in independent verification shell | Activation is session-scoped; learner's terminal and project build remain unverified |
+| 2026-10-26 | Local EIM configuration ignore rule | `git check-ignore -v eim_config.toml` matched `.gitignore:58`; `git status --short` no longer listed the generated file | Passed | `.gitignore` edit remains an uncommitted workspace change |
+| 2026-10-26 | Learner-terminal ESP-IDF activation | Learner ran `idf.py --version` in the activated terminal and reported `ESP-IDF v5.5.6` | Passed | Proves tool frontend availability, not project configuration, build, flash, or hardware connection |
+| 2026-10-26 | Project target configuration | Learner's `idf.py set-target esp32` completed CMake configure/generate; `sdkconfig` records `CONFIG_IDF_TARGET="esp32"`; `build.ninja`, CMake cache, and project description exist | Passed | Build files were generated, but application compilation and hardware identity remain unverified |
+| 2026-10-26 | Minimal Phase 1 firmware build | Learner reported all 1027 build steps completed; `robotic_arm_01.bin` generated at 162,256 bytes with 85% of the smallest application partition free; bootloader, partition table, and Xtensa debug ELF inspected | Passed | Proves compilation only; no board, flash, boot, logs, or physical behavior verified |
+| 2026-10-26 | Serial-device inventory after build | Only `/dev/cu.Bluetooth-Incoming-Port`, `/dev/cu.debug-console`, and matching `tty` entries were visible | No ESP32 USB serial port detected | Board may be disconnected, cable may lack data, or USB interface/driver is not enumerated |
+| 2026-10-26 | Serial-device inventory after connection | Learner's listing added `/dev/cu.usbserial-110`; device node exists and is readable/writable | Port identification passed | USB-UART enumeration does not itself prove the attached chip model or successful flashing |
+| 2026-10-26 | First Phase 1 flash | esptool v4.12.0 detected ESP32-D0WD-V3 revision 3.1, dual-core 240 MHz with Wi-Fi/BT and 40 MHz crystal; bootloader, 162,256-byte application, and partition table each reported verified hashes; hard reset completed | Passed | Confirms chip family and written flash contents, but not application boot, serial logs, or any actuator behavior |
+| 2026-10-26 | First Phase 1 runtime/serial log | Bootloader loaded factory app at `0x10000`; ESP-IDF v5.5.6 called `app_main()` on CPU0; expected `ESP_LOGI` and `ESP_LOGW` messages appeared; main task reported return from `app_main()` | Passed | No actuator behavior was enabled or tested; flash header remains configured for 2 MB despite detected 4 MB hardware |
+| 2026-10-26 | Flash-size menuconfig edit | Saved `sdkconfig` now contains `CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y` and `CONFIG_ESPTOOLPY_FLASHSIZE="4MB"` | File inspection passed | Learner-terminal verification plus rebuild/reflash/runtime warning check remain pending |
+| 2026-10-26 | Rebuilt application image after flash-size edit | Extended esptool image inspection reported ESP32, `Flash size: 4MB`, 40 MHz, DIO, valid checksum/hash, and ESP-IDF v5.5.6 | Passed | Corrected image has not yet been reflashed or boot-verified |
+| 2026-10-26 | Corrected 4 MB image runtime | Boot log reported `SPI Flash Size : 4MB`, did not repeat the 4096 KB/2048 KB mismatch warning, loaded the application, and printed both expected `arm_app` messages | Passed | No servo or other actuator behavior was enabled or tested |
+| 2026-10-26 | Minimal reproducible configuration | `idf.py save-defconfig` generated tracked `sdkconfig.defaults` containing `CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y`; `git diff --check` passed | Passed | Active generated `sdkconfig` remains intentionally ignored |
 
 ## Session resume procedure
 

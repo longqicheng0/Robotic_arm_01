@@ -71,6 +71,11 @@ esp_err_t st3215::ping(std::uint8_t id)
 
     st3215_build_ping(id,packet);
 
+    esp_err_t clearBytes = uart_flush_input(
+        arm_config::kServoUart
+    );
+    if (clearBytes != ESP_OK){return clearBytes;}
+
     int bytesWritten = uart_write_bytes(
         arm_config::kServoUart,
         packet,
@@ -78,5 +83,34 @@ esp_err_t st3215::ping(std::uint8_t id)
     );
     if (bytesWritten != 6){return ESP_FAIL;}
 
-    return ESP_ERR_NOT_SUPPORTED;
+    esp_err_t txStatus = uart_wait_tx_done(
+        arm_config::kServoUart,
+        pdMS_TO_TICKS(10)
+    );
+    if (txStatus != ESP_OK){return txStatus;}
+
+    std::uint8_t response[sizeof(packet)];
+
+    int bytesRead = uart_read_bytes(
+        arm_config::kServoUart,
+        response,
+        sizeof(response),
+        pdMS_TO_TICKS(20)
+    );
+    if (bytesRead < 0){return ESP_FAIL;}
+    if (bytesRead != sizeof(response)){return ESP_ERR_TIMEOUT;}
+
+    if (   response[0] != 0xFF
+        || response[1] != 0xFF
+        || response[2] != id
+        || response[3] != 0x02
+    ){return ESP_ERR_INVALID_RESPONSE;}
+
+    if (response[5] != st3215_checksum(&response[2], 3)){return ESP_ERR_INVALID_CRC;}
+    if (response[4] != 0){
+        return ESP_FAIL;
+    }
+
+    return ESP_OK;
+
 }

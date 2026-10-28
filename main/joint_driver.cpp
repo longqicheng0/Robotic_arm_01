@@ -1,8 +1,10 @@
 #include <stdint.h>
 #include <stddef.h>
+#include <cmath>
 
 #include "arm_config.h"
 #include "joint_driver.h"
+
 
 static uint8_t st3215_checksum(const uint8_t *bytes, size_t length){
 
@@ -113,4 +115,19 @@ esp_err_t st3215::ping(std::uint8_t id)
 
     return ESP_OK;
 
+}
+
+std::uint16_t st3215::degreesToPositionSteps(float degrees, const arm::ServoCalibration& calibration)
+{
+    float stepsPerDegree = 4096.0f / 360.0f;
+    float direction = calibration.reversed ? -1.0f : 1.0f;
+
+    float rawSteps = calibration.zeroStep + direction * degrees * stepsPerDegree;
+
+    if (rawSteps < 0){return 0;}
+    if (rawSteps > 4095.0f){return 4095.0f;}
+
+    std::uint16_t steps = static_cast<std::uint16_t>(std::lround(rawSteps));
+
+    return steps;
 }

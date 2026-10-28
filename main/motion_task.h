@@ -11,4 +11,6 @@ namespace arm
     float updateJointDegrees(float currentDegrees, float targetDegrees, const JointLimits& limits, float deltaTimeSeconds);
 
     JointPositions updateJointPositions(const JointPositions& currentPositions, const JointPositions& targetPositions, const JointLimitsArray& limits, float deltaTimeSeconds);
+
+    ServoTargets mapJointPositionsToServoTargets(const JointPositions& currentPositions, const ServoCalibrationArray& calibrations);
 }

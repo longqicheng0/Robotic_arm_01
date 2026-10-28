@@ -45,6 +45,15 @@ namespace arm
     struct ServoTargets
     {
         std::array<std::uint16_t, static_cast<std::size_t>(ServoIdx::Count)> positionSteps{};
-    }
+    };
+
+    struct ServoCalibration
+    {
+        std::uint8_t busId{};
+        std::uint16_t zeroStep{};
+        bool reversed{};
+    };
+
+    using ServoCalibrationArray = std::array<ServoCalibration, static_cast<std::size_t>(ServoIdx::Count)>;
 
 }

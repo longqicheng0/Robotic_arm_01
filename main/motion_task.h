@@ -16,4 +16,6 @@ namespace arm
     ServoTargets mapJointPositionsToServoTargets(const JointPositions& currentPositions, const ServoCalibrationArray& calibrations);
 
     esp_err_t runMotionCycle(JointPositions& currentPositions, const JointPositions& targetPositions, const JointLimitsArray& limits, const ServoCalibrationArray& calibrations, float deltaTimeSeconds, std::uint16_t speedStepsPerSecond);
+
+    esp_err_t startMotionTask();
 }

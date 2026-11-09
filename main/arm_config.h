@@ -34,4 +34,7 @@ namespace arm_config {
         arm::ServoCalibration{kElbowServoId, 1024, false}, // Elbow
         arm::ServoCalibration{kGripperServoId, 2047, true} // Gripper
     };
+
+    inline constexpr std::uint32_t kMotionPeriodMS = 20; // 50Hz motion update rate
+    inline constexpr float kMotionPeriodSeconds = static_cast<float>(kMotionPeriodMS) / 1000.0f;
 }

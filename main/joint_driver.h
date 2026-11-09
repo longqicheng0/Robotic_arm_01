@@ -10,4 +10,5 @@ namespace st3215
     esp_err_t initialize();
     esp_err_t ping(std::uint8_t id);
     std::uint16_t degreesToPositionSteps(float degrees, const arm::ServoCalibration& calibration);
+    esp_err_t writePosition(std::uint8_t id, std::uint16_t positionSteps, std::uint16_t speedStepsPerSecond);
 } // namespace st3215

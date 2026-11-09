@@ -1,4 +1,5 @@
 #include "motion_task.h"
+#include "joint_driver.h"
 
 namespace arm
 {
@@ -33,7 +34,6 @@ namespace arm
 
         return moveTowardDegrees(currentDegrees,safeTargetDegrees,limits.maxDegreesPerSecond,deltaTimeSeconds);
     }
-
     
     JointPositions updateJointPositions(const JointPositions& currentPositions, const JointPositions& targetPositions, const JointLimitsArray& limits, float deltaTimeSeconds){
         JointPositions nextPositions{};
@@ -43,6 +43,18 @@ namespace arm
         }
 
         return nextPositions;
+    }
+
+    ServoTargets mapJointPositionsToServoTargets(const JointPositions& currentPositions, const ServoCalibrationArray& calibrations){
+        ServoTargets targets{};
+
+        targets.positionSteps[static_cast<std::size_t>(ServoIdx::Base)] = st3215::degreesToPositionSteps(currentPositions.jointDegrees[static_cast<std::size_t>(JointId::Base)], calibrations[static_cast<std::size_t>(ServoIdx::Base)]);
+        targets.positionSteps[static_cast<std::size_t>(ServoIdx::ShoulderA)] = st3215::degreesToPositionSteps(currentPositions.jointDegrees[static_cast<std::size_t>(JointId::Shoulder)], calibrations[static_cast<std::size_t>(ServoIdx::ShoulderA)]);
+        targets.positionSteps[static_cast<std::size_t>(ServoIdx::ShoulderB)] = st3215::degreesToPositionSteps(currentPositions.jointDegrees[static_cast<std::size_t>(JointId::Shoulder)], calibrations[static_cast<std::size_t>(ServoIdx::ShoulderB)]);
+        targets.positionSteps[static_cast<std::size_t>(ServoIdx::Elbow)] = st3215::degreesToPositionSteps(currentPositions.jointDegrees[static_cast<std::size_t>(JointId::Elbow)], calibrations[static_cast<std::size_t>(ServoIdx::Elbow)]);
+        targets.positionSteps[static_cast<std::size_t>(ServoIdx::Gripper)] = st3215::degreesToPositionSteps(currentPositions.jointDegrees[static_cast<std::size_t>(JointId::Gripper)], calibrations[static_cast<std::size_t>(ServoIdx::Gripper)]);
+
+        return targets;
     }
 }
 

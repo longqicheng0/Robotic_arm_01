@@ -130,4 +130,48 @@ std::uint16_t st3215::degreesToPositionSteps(float degrees, const arm::ServoCali
     std::uint16_t steps = static_cast<std::uint16_t>(std::lround(rawSteps));
 
     return steps;
+
+}
+
+esp_err_t st3215::writePosition(std::uint8_t id, std::uint16_t positionSteps, std::uint16_t speedStepsPerSecond){
+    if (positionSteps > 4095){
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    std::uint8_t packet[13]{};
+
+    packet[0] = 0xFF;
+    packet[1] = 0xFF;
+    packet[2] = id;
+    packet[3] = 0x09; //length
+    packet[4] = 0x03; //instruction: write
+    packet[5] = 0x2A; //target position register address
+    packet[6] = static_cast<std::uint8_t>(positionSteps & 0xFF);
+    packet[7] = static_cast<std::uint8_t>((positionSteps >> 8) & 0xFF);
+    packet[8] = 0;
+    packet[9] = 0;
+    packet[10] = static_cast<std::uint8_t>(speedStepsPerSecond & 0xFF);
+    packet[11] = static_cast<std::uint8_t>((speedStepsPerSecond >> 8) & 0xFF);
+    packet[12] = st3215_checksum(&packet[2], 10);
+
+    int bytesWritten = uart_write_bytes(
+        arm_config::kServoUart,
+        packet,
+        sizeof(packet)
+    );
+
+    if (bytesWritten != sizeof(packet)){
+        return ESP_FAIL;
+    }
+
+    esp_err_t txStatus = uart_wait_tx_done(
+        arm_config::kServoUart,
+        pdMS_TO_TICKS(10)
+    );
+
+    if (txStatus != ESP_OK){
+        return txStatus;
+    }
+
+    return ESP_OK;
 }

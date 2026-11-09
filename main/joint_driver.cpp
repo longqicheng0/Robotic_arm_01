@@ -175,3 +175,118 @@ esp_err_t st3215::writePosition(std::uint8_t id, std::uint16_t positionSteps, st
 
     return ESP_OK;
 }
+
+esp_err_t st3215::readPosition(std::uint8_t id, std::uint16_t& positionSteps){
+    std::uint8_t packet[8];
+
+    packet[0] = 0xFF;
+    packet[1] = 0xFF;   
+    packet[2] = id;
+    packet[3] = 0x04; //length
+    packet[4] = 0x02; //instruction: read
+    packet[5] = 0x38; //register address: present position
+    packet[6] = 0x02; //number of bytes to read
+    packet[7] = st3215_checksum(&packet[2], 5);
+
+    esp_err_t clearBytes = uart_flush_input(
+        arm_config::kServoUart
+    );
+    if (clearBytes != ESP_OK){return clearBytes;}
+
+    int requestBytes = uart_write_bytes(
+        arm_config::kServoUart,
+        packet,
+        sizeof(packet)
+    );
+    
+    if (requestBytes != sizeof(packet)){return ESP_FAIL;}
+
+    esp_err_t txStatus = uart_wait_tx_done(
+        arm_config::kServoUart,
+        pdMS_TO_TICKS(10)
+    );
+    if (txStatus != ESP_OK){return txStatus;}
+
+    uint8_t response[8]; 
+    
+    int bytesRead = uart_read_bytes(
+        arm_config::kServoUart,
+        response,
+        sizeof(response),
+        pdMS_TO_TICKS(20)
+    );
+
+    if (bytesRead < 0){return ESP_FAIL;}
+    if (bytesRead != sizeof(response)){return ESP_ERR_TIMEOUT;}
+
+    if (   response[0] != 0xFF
+        || response[1] != 0xFF
+        || response[2] != id
+        || response[3] != 0x04
+    ){return ESP_ERR_INVALID_RESPONSE;}
+
+    if (response[7] != st3215_checksum(&response[2], 5)){return ESP_ERR_INVALID_CRC;}
+    if (response[4] != 0){
+        return ESP_FAIL;}
+
+    positionSteps = static_cast<std::uint16_t>(response[5]) | (static_cast<std::uint16_t>(response[6]) << 8);
+
+    return ESP_OK;
+}
+
+esp_err_t st3215::synchronizedWrite(const arm::ServoTargets& targets, const arm::ServoCalibrationArray& calibrations, std::uint16_t speedStepsPerSecond){
+    std::size_t constexpr byteSize = 7 + 5 * 7 + 1;
+
+    uint8_t packet[byteSize]{};
+
+    packet[0] = 0xFF;
+    packet[1] = 0xFF;
+    packet[2] = 0xFE; //broadcast ID
+    packet[3] = 7 * 5 + 4; //length: 7 bytes per servo + 4 bytes for instruction, register address, and data length
+    packet[4] = 0x83; //instruction: sync write
+    packet[5] = 0x2A; //register address: target position
+    packet[6] = 0x06; //number of bytes to write per servo 
+
+    for (std::size_t i = 0; i < static_cast<std::size_t>(arm::ServoIdx::Count); i++){
+        std::uint8_t servoId = calibrations[i].busId;
+        
+
+        std::uint16_t positionSteps = targets.positionSteps[i];
+        if (positionSteps > 4095){return ESP_ERR_INVALID_ARG;}
+
+        std::uint16_t speedSteps = speedStepsPerSecond;
+
+        std::size_t offset = 7 + i * 7;
+
+        packet[offset]     = servoId;
+        packet[offset + 1] = static_cast<std::uint8_t>(positionSteps & 0xFF);
+        packet[offset + 2] = static_cast<std::uint8_t>((positionSteps >> 8) & 0xFF);
+        packet[offset + 3] = 0; //reserved
+        packet[offset + 4] = 0; //reserved
+        packet[offset + 5] = static_cast<std::uint8_t>(speedSteps & 0xFF);
+        packet[offset + 6] = static_cast<std::uint8_t>((speedSteps >> 8) & 0xFF);
+    }
+
+    packet[byteSize - 1] = st3215_checksum(&packet[2], byteSize - 3);
+
+    // send the packet over UART
+    int bytesWritten = uart_write_bytes(
+        arm_config::kServoUart,
+        packet,
+        sizeof(packet)
+    );
+
+    if (bytesWritten != sizeof(packet)){
+        return ESP_FAIL;
+    }
+
+    esp_err_t txStatus = uart_wait_tx_done(
+        arm_config::kServoUart,
+        pdMS_TO_TICKS(10)
+    );
+    if (txStatus != ESP_OK){
+        return txStatus;
+    }
+
+    return ESP_OK;
+}

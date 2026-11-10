@@ -1,9 +1,13 @@
-#include <stdint.h>
-#include <stddef.h>
-#include <cmath>
-
-#include "arm_config.h"
 #include "joint_driver.h"
+
+#include <cmath>
+#include <cstddef>
+#include <cstdint>
+
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+
+#include "servo_config.h"
 
 
 static uint8_t st3215_checksum(const uint8_t *bytes, size_t length){
@@ -31,7 +35,7 @@ esp_err_t st3215::initialize()
 {
     uart_config_t config = {};
 
-    config.baud_rate            = arm_config::kServoBaudRate;
+    config.baud_rate            = servo_config::kServoBaudRate;
     config.data_bits            = UART_DATA_8_BITS;
     config.parity               = UART_PARITY_DISABLE;
     config.stop_bits            = UART_STOP_BITS_1;
@@ -40,22 +44,22 @@ esp_err_t st3215::initialize()
     config.source_clk           = UART_SCLK_DEFAULT;
 
     esp_err_t status = uart_param_config(
-        arm_config::kServoUart,
+        servo_config::kServoUart,
         &config
     );
     if (status != ESP_OK){return status;}
 
     esp_err_t pinStatus = uart_set_pin(
-        arm_config::kServoUart,
-        arm_config::kServoTxGpio,
-        arm_config::kServoRxGpio,
+        servo_config::kServoUart,
+        servo_config::kServoTxGpio,
+        servo_config::kServoRxGpio,
         UART_PIN_NO_CHANGE,
         UART_PIN_NO_CHANGE
     );
     if (pinStatus != ESP_OK){return pinStatus;}
 
     esp_err_t driverStatus = uart_driver_install(
-        arm_config::kServoUart,
+        servo_config::kServoUart,
         256, //rx buffer size
         0, //tx buffer size
         0, //queue size
@@ -74,19 +78,19 @@ esp_err_t st3215::ping(std::uint8_t id)
     st3215_build_ping(id,packet);
 
     esp_err_t clearBytes = uart_flush_input(
-        arm_config::kServoUart
+        servo_config::kServoUart
     );
     if (clearBytes != ESP_OK){return clearBytes;}
 
     int bytesWritten = uart_write_bytes(
-        arm_config::kServoUart,
+        servo_config::kServoUart,
         packet,
         sizeof(packet)
     );
     if (bytesWritten != 6){return ESP_FAIL;}
 
     esp_err_t txStatus = uart_wait_tx_done(
-        arm_config::kServoUart,
+        servo_config::kServoUart,
         pdMS_TO_TICKS(10)
     );
     if (txStatus != ESP_OK){return txStatus;}
@@ -94,7 +98,7 @@ esp_err_t st3215::ping(std::uint8_t id)
     std::uint8_t response[sizeof(packet)];
 
     int bytesRead = uart_read_bytes(
-        arm_config::kServoUart,
+        servo_config::kServoUart,
         response,
         sizeof(response),
         pdMS_TO_TICKS(20)
@@ -133,6 +137,19 @@ std::uint16_t st3215::degreesToPositionSteps(float degrees, const arm::ServoCali
 
 }
 
+arm::ServoTargets arm::mapJointPositionsToServoTargets(const JointPositions& currentPositions, const ServoCalibrationArray& calibrations)
+{
+    ServoTargets targets{};
+
+    targets.positionSteps[static_cast<std::size_t>(ServoIdx::Base)] = st3215::degreesToPositionSteps(currentPositions.jointDegrees[static_cast<std::size_t>(JointId::Base)], calibrations[static_cast<std::size_t>(ServoIdx::Base)]);
+    targets.positionSteps[static_cast<std::size_t>(ServoIdx::ShoulderA)] = st3215::degreesToPositionSteps(currentPositions.jointDegrees[static_cast<std::size_t>(JointId::Shoulder)], calibrations[static_cast<std::size_t>(ServoIdx::ShoulderA)]);
+    targets.positionSteps[static_cast<std::size_t>(ServoIdx::ShoulderB)] = st3215::degreesToPositionSteps(currentPositions.jointDegrees[static_cast<std::size_t>(JointId::Shoulder)], calibrations[static_cast<std::size_t>(ServoIdx::ShoulderB)]);
+    targets.positionSteps[static_cast<std::size_t>(ServoIdx::Elbow)] = st3215::degreesToPositionSteps(currentPositions.jointDegrees[static_cast<std::size_t>(JointId::Elbow)], calibrations[static_cast<std::size_t>(ServoIdx::Elbow)]);
+    targets.positionSteps[static_cast<std::size_t>(ServoIdx::Gripper)] = st3215::degreesToPositionSteps(currentPositions.jointDegrees[static_cast<std::size_t>(JointId::Gripper)], calibrations[static_cast<std::size_t>(ServoIdx::Gripper)]);
+
+    return targets;
+}
+
 esp_err_t st3215::writePosition(std::uint8_t id, std::uint16_t positionSteps, std::uint16_t speedStepsPerSecond){
     if (positionSteps > 4095){
         return ESP_ERR_INVALID_ARG;
@@ -155,7 +172,7 @@ esp_err_t st3215::writePosition(std::uint8_t id, std::uint16_t positionSteps, st
     packet[12] = st3215_checksum(&packet[2], 10);
 
     int bytesWritten = uart_write_bytes(
-        arm_config::kServoUart,
+        servo_config::kServoUart,
         packet,
         sizeof(packet)
     );
@@ -165,7 +182,7 @@ esp_err_t st3215::writePosition(std::uint8_t id, std::uint16_t positionSteps, st
     }
 
     esp_err_t txStatus = uart_wait_tx_done(
-        arm_config::kServoUart,
+        servo_config::kServoUart,
         pdMS_TO_TICKS(10)
     );
 
@@ -189,12 +206,12 @@ esp_err_t st3215::readPosition(std::uint8_t id, std::uint16_t& positionSteps){
     packet[7] = st3215_checksum(&packet[2], 5);
 
     esp_err_t clearBytes = uart_flush_input(
-        arm_config::kServoUart
+        servo_config::kServoUart
     );
     if (clearBytes != ESP_OK){return clearBytes;}
 
     int requestBytes = uart_write_bytes(
-        arm_config::kServoUart,
+        servo_config::kServoUart,
         packet,
         sizeof(packet)
     );
@@ -202,7 +219,7 @@ esp_err_t st3215::readPosition(std::uint8_t id, std::uint16_t& positionSteps){
     if (requestBytes != sizeof(packet)){return ESP_FAIL;}
 
     esp_err_t txStatus = uart_wait_tx_done(
-        arm_config::kServoUart,
+        servo_config::kServoUart,
         pdMS_TO_TICKS(10)
     );
     if (txStatus != ESP_OK){return txStatus;}
@@ -210,7 +227,7 @@ esp_err_t st3215::readPosition(std::uint8_t id, std::uint16_t& positionSteps){
     uint8_t response[8]; 
     
     int bytesRead = uart_read_bytes(
-        arm_config::kServoUart,
+        servo_config::kServoUart,
         response,
         sizeof(response),
         pdMS_TO_TICKS(20)
@@ -271,7 +288,7 @@ esp_err_t st3215::synchronizedWrite(const arm::ServoTargets& targets, const arm:
 
     // send the packet over UART
     int bytesWritten = uart_write_bytes(
-        arm_config::kServoUart,
+        servo_config::kServoUart,
         packet,
         sizeof(packet)
     );
@@ -281,7 +298,7 @@ esp_err_t st3215::synchronizedWrite(const arm::ServoTargets& targets, const arm:
     }
 
     esp_err_t txStatus = uart_wait_tx_done(
-        arm_config::kServoUart,
+        servo_config::kServoUart,
         pdMS_TO_TICKS(10)
     );
     if (txStatus != ESP_OK){

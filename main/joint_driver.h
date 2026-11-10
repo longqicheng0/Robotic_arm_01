@@ -5,6 +5,11 @@
 #include "esp_err.h"
 #include "arm_types.h"
 
+namespace arm
+{
+    ServoTargets mapJointPositionsToServoTargets(const JointPositions& currentPositions, const ServoCalibrationArray& calibrations);
+}
+
 namespace st3215
 {
     esp_err_t initialize();

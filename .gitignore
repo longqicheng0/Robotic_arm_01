@@ -64,3 +64,5 @@ eim_config.toml
 
 # Local VS Code and ESP-IDF editor configuration
 /.vscode/
+
+.Ds_Store

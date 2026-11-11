@@ -56,4 +56,18 @@ namespace arm
 
     using ServoCalibrationArray = std::array<ServoCalibration, static_cast<std::size_t>(ServoIdx::Count)>;
 
+    struct ArmGeometry
+    {
+        float baseHeightMeters{};
+        float shoulderToElbowXMeters{};
+        float shoulderToElbowZMeters{};
+        float elbowToToolMeters{};
+    };
+
+    struct CartesianPosition
+    {
+        float xMeters{};
+        float yMeters{};
+        float zMeters{};
+    };
 }

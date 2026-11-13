@@ -1,7 +1,6 @@
 #include "kinematics.h"
 #include <cmath>
 #include <cstddef>
-#include <array>
 
 namespace arm{
     constexpr float kPi = 3.14159265358979323846f;
@@ -10,13 +9,13 @@ namespace arm{
         return degrees * kPi / 180.0f;
     }
 
-    static CartesianPosition forwardKinematics(const JointPositions& jointPositions, const ArmGeometry& geometry)
+    CartesianPosition forwardKinematics(const JointPositions& jointPositions, const ArmGeometry& geometry)
     {
         //for FK, we will use a simple 3d rotation matrix model to calculate the position of the tool.
 
         //we would have BPE = BRS*SPE + BtS
         //we would have BPT = BRE*EPT + BtE
-        //we would have WPE = WRB*BPT
+        //we would have WPT = WRB*BPT
         //with variables: Theta_Base, Theta_Shoulder, Theta_Elbow, Xse, Zse, Zbs, Lt
 
         float thetaBaseRad = degreesToRadians(jointPositions.jointDegrees[static_cast<std::size_t>(JointId::Base)]);
@@ -35,7 +34,7 @@ namespace arm{
         float radiusMeters = 
             Xse * std::cos(thetaShoulderRad) 
             + Zse * std::sin(thetaShoulderRad) 
-            + Lt * std::cos(thetaShoulderRad + thetaElbowRad);
+            + Lt * std::sin(thetaShoulderRad + thetaElbowRad);
 
         //z of the toolls can be calculated directly
         float toolZMeters =
